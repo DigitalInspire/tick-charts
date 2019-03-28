@@ -107,7 +107,7 @@ config:
     bind_address: 8086
     auth_enabled: false
     log_enabled: true
-    access_log_path: "/influxdata/logs/http_requests.log"
+    access_log_path: /influxdata/logs/http_requests.log
     write_tracing: false
     pprof_enabled: true
     https_enabled: false
