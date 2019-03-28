@@ -60,7 +60,7 @@ config:
   reporting_disabled: false
   storage_directory: /var/lib/influxdb
   rpc:
-    bind_address: 8088
+    bind_address: 127.0.0.1:8088
     enabled: true
   meta:
     retention_autocreate: true
@@ -107,6 +107,7 @@ config:
     bind_address: 8086
     auth_enabled: false
     log_enabled: true
+    access_log_path: "/influxdata/logs/http_requests.log"
     write_tracing: false
     pprof_enabled: true
     https_enabled: false
@@ -114,11 +115,17 @@ config:
     https_private_key: ""
     max_row_limit: 10000
     max_connection_limit: 0
+    max_concurrent_write_limit: 0
+    max_enqueued_write_limit: 0
+    enqueued_write_timeout: 0
     shared_secret: "beetlejuicebeetlejuicebeetlejuice"
     realm: InfluxDB
     unix_socket_enabled: false
     bind_socket: /var/run/influxdb.sock
     flux_enabled: true
+  logging:
+    format: "logfmt"
+    level: "error"
   graphite:
     enabled: false
     bind_address: 2003
