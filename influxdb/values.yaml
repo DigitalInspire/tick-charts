@@ -124,8 +124,8 @@ config:
     bind_socket: /var/run/influxdb.sock
     flux_enabled: true
   logging:
-    format: "logfmt"
-    level: "error"
+    format: logfmt
+    level: error
   graphite:
     enabled: false
     bind_address: 2003
