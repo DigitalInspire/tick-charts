@@ -60,7 +60,7 @@ config:
   reporting_disabled: false
   storage_directory: /var/lib/influxdb
   rpc:
-    bind_address: 127.0.0.1:8088
+    bind_address: 8088
     enabled: true
   meta:
     retention_autocreate: true
