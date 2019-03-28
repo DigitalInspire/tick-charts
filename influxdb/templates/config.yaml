@@ -68,7 +68,7 @@ data:
       bind-address = ":{{ .Values.config.http.bind_address }}"
       auth-enabled = {{ .Values.config.http.auth_enabled }}
       log-enabled = {{ .Values.config.http.log_enabled }}
-      access-log-path = {{ .Values.config.http.access_log_path }}
+      access-log-path = "{{ .Values.config.http.access_log_path }}"
       write-tracing = {{ .Values.config.http.write_tracing }}
       #pprof-enabled = {{ .Values.config.http.pprof_enabled }}
       https-enabled = {{ .Values.config.http.https_enabled }}
