@@ -87,8 +87,8 @@ data:
     
     # TODO: allow multiple graphite listeners with templates
     [logging]
-      format = "{{ .Values.config.logging.format }}
-      level= {{ .Values.config.logging.level }}
+      format = "{{ .Values.config.logging.format }}"
+      level = "{{ .Values.config.logging.level }}"
         
     [[graphite]]
       #enabled = {{ .Values.config.graphite.enabled }}
