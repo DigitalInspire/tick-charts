@@ -10,7 +10,8 @@ image:
 ## ref: http://kubernetes.io/docs/user-guide/services/
 ##
 service:
-  type: ClusterIP
+  type: LoadBalancer
+  nodePort: 30889
 
 ## Persist data to a persitent volume
 ##
