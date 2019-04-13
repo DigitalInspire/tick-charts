@@ -1,0 +1,24 @@
+{{- if .Values.persistence }}
+# PersistentVolume for InfluxDB
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ template "fullname" .}}-pv-1
+spec:
+  capacity:
+    storage: {{.Values.persistence.size | quote}}
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ template "fullname" . }}
+  local:
+    path: {{.Values.persistence.storage_path}}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+            - {{.Values.persistence.node_affinity.host}}
+{{- end }}

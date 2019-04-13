@@ -2,37 +2,83 @@
 ## ref: https://hub.docker.com/r/library/influxdb/tags/
 image:
   repo: "influxdb"
-  tag: "1.7.4-alpine"
+  tag: "1.7.5"
   pullPolicy: IfNotPresent
 
 ## Specify a service type
-## NodePort is default
+## ClusterIP is default
 ## ref: http://kubernetes.io/docs/user-guide/services/
 ##
 service:
-  type: LoadBalancer
-  nodePort: 30889
+  type: ClusterIP
 
-## Persist data to a persitent volume
+## Create default user through Kubernetes job
+## Defaults indicated below
+##
+setDefaultUser:
+  enabled: true
+
+  ## Image of the container used for job
+  ## Default: appropriate/curl:latest
+  ##
+  image: appropriate/curl:latest
+
+  ## Deadline for job so it does not retry forever.
+  ## Default: activeDeadline: 300
+  ##
+  activeDeadline: 300
+
+  ## Restart policy for job
+  ## Default: OnFailure
+  restartPolicy: OnFailure
+
+  user:
+
+    ## The user name
+    ## Default: "admin"
+    username: "admin"
+
+    ## User password
+    ## single quotes must be escaped (\')
+    ## Default: (Randomly generated 10 characters of AlphaNum)
+    password: "admin"
+
+    ## User privileges
+    ## Default: "WITH ALL PRIVILEGES"
+    privileges: "WITH ALL PRIVILEGES"
+
+## Persist data to a persistent volume
 ##
 persistence:
-  enabled: false
+  enabled: true
   ## If defined, volume.beta.kubernetes.io/storage-class: <storageClass>
   ## Default: volume.alpha.kubernetes.io/storage-class: default
   ##
   # storageClass:
   accessMode: ReadWriteOnce
-  size: 8Gi
+  size: 16Gi #define size of volume for influxdb (Gi=Gigabyte)
+  storage_path: /opt/influxdb/
+  node_affinity:
+    host: worker1.k8scluster.local
 
 ## Configure resource requests and limits
 ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
 resources:
   requests:
-    memory: 256Mi
-    cpu: 0.1
+    memory: 2Gi
+    cpu: 0.3
   limits:
-    memory: 16Gi
-    cpu: 8
+    memory: 8Gi
+    cpu: 4
+
+ingress:
+  enabled: false
+  tls: false
+  secretName: my-tls-cert # only needed if tls above is true
+  hostname: influxdb.foobar.com
+  annotations:
+    # kubernetes.io/ingress.class: "nginx"
+    # kubernetes.io/tls-acme: "true"
 
 ## Pod priority
 ## https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
@@ -54,10 +100,10 @@ tolerations: []
 affinity: {}
 
 ## Change InfluxDB configuration paramaters below:
-## Defaults are indicated
+## This config was modified by Digital Inspire
 ## ref: https://docs.influxdata.com/influxdb/v1.7/administration/config/
 config:
-  reporting_disabled: false
+  reporting_disabled: true
   storage_directory: /var/lib/influxdb
   rpc:
     bind_address: 8088
@@ -105,20 +151,20 @@ config:
   http:
     enabled: true
     bind_address: 8086
-    auth_enabled: false
+    auth_enabled: true
     log_enabled: true
     access_log_path: /influxdata/logs/http_requests.log
-    write_tracing: false
+    write_tracing: true
     pprof_enabled: true
     https_enabled: false
-    https_certificate: /etc/ssl/influxdb.pem
+    https_certificate: ""
     https_private_key: ""
-    max_row_limit: 10000
-    max_connection_limit: 0
+    max_row_limit: 1000000
+    max_connection_limit: 500
     max_concurrent_write_limit: 0
     max_enqueued_write_limit: 0
     enqueued_write_timeout: 0
-    shared_secret: "beetlejuicebeetlejuicebeetlejuice"
+    shared_secret: ""
     realm: InfluxDB
     unix_socket_enabled: false
     bind_socket: /var/run/influxdb.sock
