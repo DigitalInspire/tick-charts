@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ template "fullname" .}}-pv-1
+  name: {{ template "fullname" .}}-pv
 spec:
   capacity:
     storage: {{.Values.persistence.size | quote}}
@@ -12,7 +12,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: {{ template "fullname" . }}
   local:
-    path: {{.Values.persistence.storage_path}}
+    path: {{.Values.persistence.storagePath}}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -20,5 +20,5 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-            - {{.Values.persistence.node_affinity.host}}
+            - {{.Values.persistence.nodeAffinity.host}}
 {{- end }}

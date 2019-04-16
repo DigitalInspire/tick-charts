@@ -1,2 +1,3 @@
 *.tgz
 repository
+.DS_Store

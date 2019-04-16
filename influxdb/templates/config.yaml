@@ -90,62 +90,6 @@ data:
       #ca-certs = "{{ .Values.config.subscriber.ca_certs }}"
       #write-concurrency = {{ .Values.config.subscriber.write_concurrency | int64 }}
       #write-buffer-size = {{ .Values.config.subscriber.write_buffer_size | int64 }}
-        
-    [[graphite]]
-      #enabled = {{ .Values.config.graphite.enabled }}
-      #bind-address = ":{{ .Values.config.graphite.bind_address }}"
-      #database = "{{ .Values.config.graphite.database }}"
-      #retention-policy = "{{ .Values.config.graphite.retention_policy }}"
-      #protocol = "{{ .Values.config.graphite.protocol }}"
-      #batch-size = {{ .Values.config.graphite.batch_size | int64 }}
-      #batch-pending = {{ .Values.config.graphite.batch_pending | int64 }}
-      #batch-timeout = "{{ .Values.config.graphite.batch_timeout }}"
-      #consistency-level = "{{ .Values.config.graphite.consistency_level }}"
-      #separator = "{{ .Values.config.graphite.separator }}"
-      #udp-read-buffer = {{ .Values.config.graphite.udp_read_buffer | int64 }}
-    
-    # TODO: allow multiple collectd listeners with templates
-
-    [[collectd]]
-      #enabled = {{ .Values.config.collectd.enabled }}
-      #bind-address = ":{{ .Values.config.collectd.bind_address }}"
-      #database = "{{ .Values.config.collectd.database }}"
-      #retention-policy = "{{ .Values.config.collectd.retention_policy }}"
-      #batch-size = {{ .Values.config.collectd.batch_size | int64 }}
-      #batch-pending = {{ .Values.config.collectd.batch_pending | int64 }}
-      #batch-timeout = "{{ .Values.config.collectd.batch_timeout }}"
-      #read-buffer = {{ .Values.config.collectd.read_buffer | int64 }}
-      #typesdb = "{{ .Values.config.collectd.typesdb }}"
-      #security-level = "{{ .Values.config.collectd.security_level }}"
-      #auth-file = "{{ .Values.config.collectd.auth_file }}"
-    
-    # TODO: allow multiple opentsdb listeners with templates
-
-    [[opentsdb]]
-      #enabled = {{ .Values.config.opentsdb.enabled }}
-      #bind-address = ":{{ .Values.config.opentsdb.bind_address }}"
-      #database = "{{ .Values.config.opentsdb.database }}"
-      #retention-policy = "{{ .Values.config.opentsdb.retention_policy }}"
-      #consistency-level = "{{ .Values.config.opentsdb.consistency_level }}"
-      #tls-enabled = {{ .Values.config.opentsdb.tls_enabled }}
-      #certificate = "{{ .Values.config.opentsdb.certificate }}"
-      #batch-size = {{ .Values.config.opentsdb.batch_size | int64 }}
-      #batch-pending = {{ .Values.config.opentsdb.batch_pending | int64 }}
-      #batch-timeout = "{{ .Values.config.opentsdb.batch_timeout }}"
-      #log-point-errors = {{ .Values.config.opentsdb.log_point_errors }}
-    
-    # TODO: allow multiple udp listeners with templates
-
-    [[udp]]
-      #enabled = {{ .Values.config.udp.enabled }}
-      #bind-address = ":{{ .Values.config.udp.bind_address }}"
-      #database = "{{ .Values.config.udp.database }}"
-      #retention-policy = "{{ .Values.config.udp.retention_policy }}"
-      #batch-size = {{ .Values.config.udp.batch_size | int64 }}
-      #batch-pending = {{ .Values.config.udp.batch_pending | int64 }}
-      #read-buffer = {{ .Values.config.udp.read_buffer | int64 }}
-      #batch-timeout = "{{ .Values.config.udp.batch_timeout }}"
-      #precision = "{{ .Values.config.udp.precision }}"
 
     [continuous_queries]
       log-enabled = {{ .Values.config.continuous_queries.log_enabled }}

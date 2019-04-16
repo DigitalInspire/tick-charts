@@ -1,7 +1,8 @@
-{{- if .Values.setDefaultUser.enabled -}}
+{{- if .Values.createAdminUser.enabled -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
+  name: {{ template "fullname" . }}
   labels:
     app: {{ template "fullname" . }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
@@ -12,7 +13,7 @@ metadata:
     "helm.sh/hook": post-install
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
-  activeDeadlineSeconds: {{ .Values.setDefaultUser.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ .Values.createAdminUser.activeDeadlineSeconds }}
   template:
     metadata:
       labels:
@@ -21,7 +22,7 @@ spec:
     spec:
       containers:
       - name: {{ template "fullname" . }}-set-auth
-        image: "{{ .Values.setDefaultUser.image }}"
+        image: {{ .Values.createAdminUser.image | quote }}
         env:
           - name: INFLUXDB_USER
             valueFrom:
@@ -39,6 +40,6 @@ spec:
           - |
              curl -X POST http://{{ template "fullname" . }}:{{ .Values.config.http.bind_address }}/query \
              --data-urlencode \
-             "q=CREATE USER \"${INFLUXDB_USER}\" WITH PASSWORD '${INFLUXDB_PASSWORD}' {{ .Values.setDefaultUser.user.privileges }}"
-      restartPolicy: {{ .Values.setDefaultUser.restartPolicy }}
+             "q=CREATE USER \"${INFLUXDB_USER}\" WITH PASSWORD '${INFLUXDB_PASSWORD}' {{ .Values.createAdminUser.user.privileges }}"
+      restartPolicy: {{ .Values.createAdminUser.restartPolicy }}
 {{- end -}}

@@ -4,7 +4,7 @@
 
 To use, add the `kubernetes.io/ingress.class: nginx` annotation to your Ingress resources.
 
-## TL;DR;
+## TL;DR; (This step is sufficient for the Tick-Stack services!)
 
 ```console
 helm install --name nginx-ingress --namespace kube-system --set controller.hostNetwork=true,controller.kind=DaemonSet nginx-ingress/

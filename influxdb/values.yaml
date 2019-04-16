@@ -1,106 +1,94 @@
-## influxdb image version
+######################################################
+# InfluxDB values.yaml (modified by Digital Inspire) #
+######################################################
+
+# this value is used in _helpers.tpl for the fullname
+# fullname is used for all naming conventions of the influxdb config files
+namePrefix: influxdata
+
+## influxdb image repository and tag that is used for the Pod (i.e. docker container)
 ## ref: https://hub.docker.com/r/library/influxdb/tags/
 image:
   repo: "influxdb"
   tag: "1.7.5"
   pullPolicy: IfNotPresent
 
+## Configure resource requests and limits
+## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+resources:
+  # requests = what is requested at creation time (default)
+  requests:
+    memory: 2Gi
+    cpu: 0.3
+  # limits = the resource limits for the influxdb serivce
+  limits:
+    memory: 8Gi
+    cpu: 4
+
 ## Specify a service type
-## ClusterIP is default
+## ClusterIP is default as Ingress is used to allow for external access
 ## ref: http://kubernetes.io/docs/user-guide/services/
-##
 service:
   type: ClusterIP
 
 ## Create default user through Kubernetes job
 ## Defaults indicated below
-##
-setDefaultUser:
+createAdminUser:
   enabled: true
-
   ## Image of the container used for job
-  ## Default: appropriate/curl:latest
-  ##
   image: appropriate/curl:latest
-
   ## Deadline for job so it does not retry forever.
-  ## Default: activeDeadline: 300
-  ##
   activeDeadline: 300
-
   ## Restart policy for job
-  ## Default: OnFailure
   restartPolicy: OnFailure
-
   user:
-
     ## The user name
-    ## Default: "admin"
     username: "admin"
-
     ## User password
     ## single quotes must be escaped (\')
-    ## Default: (Randomly generated 10 characters of AlphaNum)
     password: "admin"
-
-    ## User privileges
-    ## Default: "WITH ALL PRIVILEGES"
+    ## User privileges ("WITH ALL PRIVILEGES" = InfluxDB Super admin)
     privileges: "WITH ALL PRIVILEGES"
 
+
 ## Persist data to a persistent volume
-##
+## This does not delete data after a shutdown or restart of the Pod
 persistence:
-  enabled: true
-  ## If defined, volume.beta.kubernetes.io/storage-class: <storageClass>
-  ## Default: volume.alpha.kubernetes.io/storage-class: default
-  ##
-  # storageClass:
   accessMode: ReadWriteOnce
   size: 16Gi #define size of volume for influxdb (Gi=Gigabyte)
-  storage_path: /opt/influxdb/
-  node_affinity:
+  # Storage path where persistent volume (pv) is mounted on machine
+  # NOTE: This folder needs to be created on the actual or storage!
+  storagePath: /opt/influxdb/
+  # set a node affinity for the pv and stateful set of the influxdb
+  # host = hostname of machine where pv should be mounted
+  # NOTE: select a node where storage capacity is available
+  nodeAffinity:
     host: worker1.k8scluster.local
 
-## Configure resource requests and limits
-## ref: http://kubernetes.io/docs/user-guide/compute-resources/
-resources:
-  requests:
-    memory: 2Gi
-    cpu: 0.3
-  limits:
-    memory: 8Gi
-    cpu: 4
-
+# Ingress Object for InfluxDB
+# In short, this allows the InfluxDB being accessed from the outside world
+# Also allows for SSL termination and usage of hostnames and tls/ssl certs
+# If disabled, InfluxDB won't be accesible from the outside
+# ref: https://kubernetes.io/docs/concepts/services-networking/ingress/ 
 ingress:
-  enabled: false
+  enabled: true
+  # hostname is an already registered domain name that points to one of your worker nodes!
+  # as ingress controller is a Deamon Set, each worker node (except master) can be used to access
+  # influxdb via ingress or the specified hostname!
+  # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access influxdb
+  hostname: ""
+  # tls should only be used if a hostname is given!
+  # if tls is enabled, ensure that a certificate for the hostname is provided under "secretName"
   tls: false
-  secretName: my-tls-cert # only needed if tls above is true
-  hostname: influxdb.foobar.com
+  # this attribute points to an existing K8s secret tls
+  # Consult the README.md in order to see how to create a K8s Secret TLS
+  secretName: my-tls-cert
   annotations:
-    # kubernetes.io/ingress.class: "nginx"
-    # kubernetes.io/tls-acme: "true"
+    kubernetes.io/ingress.class: "nginx"
 
-## Pod priority
-## https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
-# priorityClassName: ""
 
-## Node labels for pod assignment
-## ref: https://kubernetes.io/docs/user-guide/node-selection/
-#
-nodeSelector: {}
-
-## Tolerations for pod assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: []
-
-## Affinity for pod assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-##
-affinity: {}
-
-## Change InfluxDB configuration paramaters below:
-## This config was modified by Digital Inspire
+## Change InfluxDB configuration paramaters below
+## Note: Usually, K8s .yaml files use camelcase. For the influxdb config, snakecase was used
 ## ref: https://docs.influxdata.com/influxdb/v1.7/administration/config/
 config:
   reporting_disabled: true
@@ -156,6 +144,8 @@ config:
     access_log_path: /influxdata/logs/http_requests.log
     write_tracing: true
     pprof_enabled: true
+    # https and cert files should be set to false/empty respectively
+    # if ingress is used as ingress does SSL termination for influxdb
     https_enabled: false
     https_certificate: ""
     https_private_key: ""
@@ -172,52 +162,6 @@ config:
   logging:
     format: logfmt
     level: error
-  graphite:
-    enabled: false
-    bind_address: 2003
-    database: graphite
-    retention_policy: autogen
-    protocol: tcp
-    batch_size: 5000
-    batch_pending: 10
-    batch_timeout: 1s
-    consistency_level: one
-    separator: .
-    udp_read_buffer: 0
-  collectd:
-    enabled: false
-    bind_address: 25826
-    database: collectd
-    retention_policy: autogen
-    batch_size: 5000
-    batch_pending: 10
-    batch_timeout: 10s
-    read_buffer: 0
-    typesdb: /usr/share/collectd/types.db
-    security_level: none
-    auth_file: /etc/collectd/auth_file
-  opentsdb:
-    enabled: false
-    bind_address: 4242
-    database: opentsdb
-    retention_policy: autogen
-    consistency_level: one
-    tls_enabled: false
-    certificate: /etc/ssl/influxdb.pem
-    batch_size: 1000
-    batch_pending: 5
-    batch_timeout: 1s
-    log_point_errors: true
-  udp:
-    enabled: false
-    bind_address: 8089
-    database: udp
-    retention_policy: autogen
-    batch_size: 5000
-    batch_pending: 10
-    read_buffer: 0
-    batch_timeout: 1s
-    precision: "ns"
   continuous_queries:
     log_enabled: true
     enabled: true
