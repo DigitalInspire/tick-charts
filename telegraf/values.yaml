@@ -1,9 +1,17 @@
+######################################################
+# Telegraf values.yaml (modified by Digital Inspire) #
+######################################################
+
+# this value is used in _helpers.tpl for the fullname
+# fullname is used for all naming conventions of the Telegraf config files
+namePrefix: influxdata
+
 ## Default values.yaml for Telegraf
 ## This is a YAML-formatted file.
 ## ref: https://hub.docker.com/r/library/telegraf/tags/
 image:
   repo: "telegraf"
-  tag: "1.9.4-alpine"
+  tag: "1.10.1"
   pullPolicy: IfNotPresent
 
 ## Configure resource requests and limits
@@ -14,26 +22,7 @@ resources:
     cpu: 0.1
   limits:
     memory: 2Gi
-    cpu: 1
-
-## Pod priority
-## https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
-# priorityClassName: ""
-
-## Node labels for pod assignment
-## ref: https://kubernetes.io/docs/user-guide/node-selection/
-#
-nodeSelector: {}
-
-## Tolerations for pod assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: []
-
-## Affinity for pod assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-##
-affinity: {}
+    cpu: 2
 
 ## Configure the service for this telegraf instance. If you are running
 ## Any of the service plugins you will need this enabled
@@ -47,12 +36,30 @@ service:
 ## For full list of possible values see `/docs/all-config-values.yaml` and `/docs/all-config-values.toml`
 ## ref: https://docs.influxdata.com/telegraf/v1.8/administration/configuration/
 
+# Ingress Object for Telegraf
+# In short, this allows Telegraf being accessed from the outside world
+# Also allows for SSL termination and usage of hostnames and tls/ssl certs
+# If disabled, InfluxDB won't be accesible from the outside
+# ref: https://kubernetes.io/docs/concepts/services-networking/ingress/ 
+ingress:
+  enabled: true
+  # hostname is an already registered domain name that points to one of your worker nodes!
+  # as ingress controller is a Deamon Set, each worker node (except master) can be used to access
+  # telegraf via ingress or the specified hostname!
+  # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access telegraf
+  hostname: ""
+  # tls should only be used if a hostname is given!
+  # if tls is enabled, ensure that a certificate for the hostname is provided under "secretName"
+  tls: false
+  # this attribute points to an existing K8s secret tls
+  # Consult the README.md in order to see how to create a K8s Secret TLS
+  secretName: my-tls-cert
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+
 config:
-##    global_tags:
-##      dc: "us-east-1"
-##      user: "$USER"
   agent:
-    interval: "10s"
+    interval: "7s"
     round_interval: true
     metric_batch_size: 1000
     metric_buffer_limit: 10000
@@ -62,14 +69,35 @@ config:
     precision: ""
     debug: false
     quiet: false
-    logfile: ""
-    hostname: "telegraf-polling-service"
+    logfile: "/var/log/telegraf/telegraf.log"
+    hostname: "telegraf"
     omit_hostname: false
   outputs:
+    # NOTE: These are influxdb outputs for each database
+    # If you have a new database and wish to apply telegraf routing to this database
+    # add it to this configuration section! Also apply privileges for the Telegraf
+    # user, created on the influxdb, to write to the newly created database!
+    # Example given:
     - influxdb:
-        urls:
-          - "http://data-influxdb.tick:8086"
-        database: "telegraf"
+        url: "http://influxdata-influxdb:8086"
+        database: "test"
+        tagexclude: 
+          - "db"
+        # HTTP basic auth with the username and password that should exist in influxdb
+        # for telegraf to write to ALL db's (new creation of db means telegraf user needs
+        # to be added to the privileges)
+        username: "telegrafwriter"
+        password: "Telegr@fWr!ter"
+        skip_database_creation: true
+        # Tagpass Array
+        tagpass:
+          # This tagpass only allows data into the database "test" where the
+          # data has a tag "db" with the value "test"
+          - tag: "db"
+            value: "test"
+
+
+
 ##        retention_policy: ""
 ##        write_consistency: "any"
 ##        timeout: "5s"
@@ -137,6 +165,23 @@ config:
 # CPU and System is required for chronograf
 # This may show errors in the logs, but this does not affect performance or functionality
   inputs:
+    # Telegraf HTTP Listener
+    http_listener:
+      service_address: ":8186"
+      read_timeout: "10s"
+      write_timeout: "10s"
+      max_body_size: 0
+      max_line_size: 0
+      # basic username and password needs to be used by a client
+      # that wants to ingest data over HTTP.
+      basic_username: "http_ingest"
+      basic_password: "!nge$tOverHTTP"
+    # TCP Socker Listener (WITHOUT AUTH! U may use the Digital Inspire TCP Proxy)
+    socket_listener:
+      service_address: "tcp://:8094"
+      max_connections: 0
+      read_timeout: "30s"
+      data_format: "influx"
 
 ##      cpu:
 ##        percpu: false
@@ -233,18 +278,18 @@ config:
 ##      haproxy:
 ##        servers:
 ##          - "http://myhaproxy.com:1936/haproxy?stats"
-    - influxdb:
-        urls:
-          - "http://influxdb-influxdb.tick:8086/debug/vars"
-        timeout: "5s"
-    - kapacitor:
-        urls:
-          - "http://kap-kapacitor.tick:9092/debug/vars"
-        timeout: "5s"
-    - kapacitor:
-        urls:
-          - "http://kap2-kapacitor.tick:9092/debug/vars"
-        timeout: "5s"
+##     - influxdb:
+##         urls:
+##           - "http://influxdb-influxdb.tick:8086/debug/vars"
+##         timeout: "5s"
+##     - kapacitor:
+##         urls:
+##           - "http://kap-kapacitor.tick:9092/debug/vars"
+##         timeout: "5s"
+##     - kapacitor:
+##         urls:
+##           - "http://kap2-kapacitor.tick:9092/debug/vars"
+##         timeout: "5s"
 ##      lustre2:
 ##        ost_procfiles:
 ##          - "/proc/fs/lustre/obdfilter/*/stats"
@@ -382,19 +427,3 @@ config:
 ##      zookeeper:
 ##        servers:
 ##          - "localhost:2181"
-##      http_listener:
-##        service_address: ":8186"
-##        read_timeout: "10s"
-##        write_timeout: "10s"
-##        max_body_size: 0
-##        max_line_size: 0
-    - statsd:
-        service_address: ":8125"
-        percentiles:
-          - 50
-          - 95
-          - 99
-        metric_separator: "_"
-        allowed_pending_messages: 10000
-        percentile_limit: 1000
-

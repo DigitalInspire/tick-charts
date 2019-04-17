@@ -12,7 +12,7 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
 */}}
 {{- define "fullname" -}}
 {{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 24 -}}
+{{- printf "%s-%s" .Values.namePrefix $name | trunc 24 -}}
 {{- end -}}
 
 {{/*
@@ -71,6 +71,12 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
       {{ $key }} = {{ $value }}
       {{- end }}
       {{- if eq $tp "[]interface {}" }}
+      {{- if eq $key "tagpass" }}
+      [outputs.{{ $output }}.{{ $key }}]
+      {{- range $i, $val := $value }}
+        {{ $val.tag}} = [{{ $val.value | quote }}]
+        {{- end}}
+      {{- else}}
       {{ $key }} = [
           {{- $numOut := len $value }}
           {{- $numOut := sub $numOut 1 }}
@@ -84,6 +90,7 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
           {{- end }}
       ]
       {{- end }}
+    {{- end }}
     {{- end }}
   {{- end }}
   {{- end }}

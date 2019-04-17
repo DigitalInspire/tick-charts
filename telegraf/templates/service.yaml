@@ -1,5 +1,4 @@
 {{- if .Values.service.enabled -}}
-{{- if .Values.service.enabled -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -45,5 +44,4 @@ spec:
   {{- end }}
   selector:
     app: {{ template "fullname"  .}}
-{{- end -}}
 {{- end -}}
