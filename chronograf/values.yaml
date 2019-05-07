@@ -1,33 +1,21 @@
-## Image Settings
-## 
+########################################################
+# Chronograf values.yaml (modified by Digital Inspire) #
+########################################################
+
+# this value is used in _helpers.tpl for the fullname
+# fullname is used for all naming conventions of the influxdb config files
+# Example: influxdata-chronograf-<...>
+namePrefix: influxdata
+
+## influxdb image repository and tag that is used for the Pod (i.e. docker container)
 ## ref: https://hub.docker.com/r/library/chronograf/tags/
 image:
   repository: "chronograf"
-  tag: "1.7.7-alpine"
+  tag: "1.7.11"
   pullPolicy: IfNotPresent
-
-## Specify a service type
-## ClusterIP is default
-## ref: http://kubernetes.io/docs/user-guide/services/
-##
-service:
-  replicas: 1
-  type: ClusterIP
-
-## Persist data to a persitent volume
-##
-persistence:
-  enabled: false
-  ## If defined, volume.beta.kubernetes.io/storage-class: <storageClass>
-  ## Default: volume.alpha.kubernetes.io/storage-class: default
-  ##
-  # storageClass:
-  accessMode: ReadWriteOnce
-  size: 8Gi
 
 ## Configure resource requests and limits
 ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
-##
 resources:
   requests:
     memory: 256Mi
@@ -36,41 +24,35 @@ resources:
     memory: 2Gi
     cpu: 2
 
-## Pod priority
-## https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
-# priorityClassName: ""
+## Specify a service type
+## ClusterIP is default as Ingress is used to allow for external access
+## ref: http://kubernetes.io/docs/user-guide/services/
+service:
+  type: ClusterIP
 
-## Node labels for pod assignment
-## ref: https://kubernetes.io/docs/user-guide/node-selection/
-#
-nodeSelector: {}
-
-## Tolerations for pod assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: []
-
-## Affinity for pod assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
-##
-affinity: {}
-
-## Configure the ingress object to hook into existing infastructure
-## ref : http://kubernetes.io/docs/user-guide/ingress/
-## OPTIONALLY you can set .Values.ingress.secretName to set which secret to use    
-## 
+# Ingress Object for InfluxDB
+# In short, this allows the InfluxDB being accessed from the outside world
+# Also allows for SSL termination and usage of hostnames and tls/ssl certs
+# If disabled, InfluxDB won't be accesible from the outside
+# ref: https://kubernetes.io/docs/concepts/services-networking/ingress/ 
 ingress:
-  enabled: false
+  enabled: true
+  # hostname is an already registered domain name that points to one of your worker nodes!
+  # as ingress controller is a Deamon Set, each worker node (except master) can be used to access
+  # influxdb via ingress or the specified hostname!
+  # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access influxdb
+  hostname: ""
+  # tls should only be used if a hostname is given!
+  # if tls is enabled, ensure that a certificate for the hostname is provided under "secretName"
   tls: false
-  hostname: chronograf.foobar.com
+  # this attribute points to an existing K8s secret tls
+  # Consult the README.md in order to see how to create a K8s Secret TLS
+  secretName: my-tls-cert
   annotations:
-    # kubernetes.io/ingress.class: "nginx"
-    # secretName: my-tls-cert
-    # kubernetes.io/tls-acme: "true"
+    kubernetes.io/ingress.class: "nginx"
 
 ## OAuth Settings for OAuth Providers
 ## More information -> https://docs.influxdata.com/chronograf/v1.7/administration/managing-security/
-##
 oauth:
   # Need to set to true to use any of the oauth options
   enabled: false

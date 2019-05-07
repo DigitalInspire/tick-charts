@@ -166,6 +166,7 @@ config:
 # This may show errors in the logs, but this does not affect performance or functionality
   inputs:
     # Telegraf HTTP Listener
+    # This port is exposed through the ingress controller!
     http_listener:
       service_address: ":8186"
       read_timeout: "10s"
