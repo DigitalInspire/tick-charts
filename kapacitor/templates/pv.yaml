@@ -1,4 +1,4 @@
-# PersistentVolume for InfluxDB
+# PersistentVolume for Kapacitor
 apiVersion: v1
 kind: PersistentVolume
 metadata:

@@ -45,3 +45,24 @@ spec:
   selector:
     app: {{ template "fullname"  .}}
 {{- end -}}
+---
+{{- if and .Values.service.enabled .Values.service.external.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fullname" . }}-tcp
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: {{ .Release.Name }}
+spec:
+{{- with .Values.service.external.socket_listener }}
+  type: {{ .type }}
+  ports:
+  - port: {{ .nodePort | int64 }}
+    targetPort: {{ .servicePort | int64 }}
+    name: "socket-listener"
+{{- end}}
+  selector:
+    app: {{ template "fullname" . }}
+{{- end -}}

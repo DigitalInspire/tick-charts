@@ -41,6 +41,7 @@ ingress:
   # as ingress controller is a Deamon Set, each worker node (except master) can be used to access
   # influxdb via ingress or the specified hostname!
   # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access influxdb
+  #       Use wildcards for subdomains. Example: *.mydomain.com
   hostname: ""
   # tls should only be used if a hostname is given!
   # if tls is enabled, ensure that a certificate for the hostname is provided under "secretName"

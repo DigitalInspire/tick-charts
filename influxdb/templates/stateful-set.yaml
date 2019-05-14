@@ -66,11 +66,3 @@ spec:
       resources:
         requests:
           storage: {{ .Values.persistence.size | quote }}
-    {{- with .Values.nodeSelector }}
-      nodeSelector:
-{{ toYaml . | indent 8 }}
-    {{- end }}
-    {{- with .Values.affinity }}
-      affinity:
-{{ toYaml . | indent 8 }}
-    {{- end }}

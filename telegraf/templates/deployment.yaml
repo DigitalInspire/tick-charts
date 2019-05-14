@@ -29,6 +29,8 @@ spec:
         - name: varrunutmpro
           mountPath: /var/run/utmp
           readOnly: true
+        - name: varlog
+          mountPath: /var/log/telegraf
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
@@ -36,6 +38,8 @@ spec:
       - name: varrunutmpro
         hostPath:
           path: /var/run/utmp
+      - name: varlog
+        emptyDir: {}
       - name: config
         configMap:
           name: {{ template "fullname" . }}
