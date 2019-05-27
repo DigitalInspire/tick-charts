@@ -24,11 +24,11 @@ persistence:
   accessMode: ReadWriteOnce
   size: 4Gi #define size of volume for influxdb (Gi=Gigabyte)
   # Storage path where persistent volume (pv) is mounted on machine
-  # NOTE: This folder needs to be created on the actual or storage!
+  # NOTE: This folder needs to be created on the actual storage system!
   storagePath: /opt/kapacitor/
   # set a node affinity for the pv and stateful set of the influxdb
   # host = hostname of machine where pv should be mounted
-  # NOTE: select a node where storage capacity is available
+  # NOTE: select a node where storage capacity and folder is available
   nodeAffinity:
     host: worker1.k8scluster.local
 

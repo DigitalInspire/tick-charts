@@ -23,7 +23,7 @@ To install all components with the correct settings, the following order should 
 $ cd tick-charts
 $ helm install --name nginx-ingress --namespace kube-system --set controller.hostNetwork=true,controller.kind=DaemonSet nginx-ingress/
 $ helm install --name influxdb --namespace tick-stack ./influxdb/
-$ helm install --name polling --namespace tick-stack ./telegraf/
-$ helm install --name alerts --namespace tick-stack ./kapacitor/
-$ helm install --name dash --namespace tick-stack ./chronograf/
+$ helm install --name telegraf --namespace tick-stack ./telegraf/
+$ helm install --name kapacitor --namespace tick-stack ./kapacitor/
+$ helm install --name chronograf --namespace tick-stack ./chronograf/
 ```
