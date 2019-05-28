@@ -31,18 +31,11 @@ spec:
         ports:
         - name: api
           containerPort: {{ .Values.config.http.bind_address }}
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: api
-          initialDelaySeconds: 30
-          timeoutSeconds: 5
-        readinessProbe:
-          httpGet:
-            path: /ping
-            port: api
-          initialDelaySeconds: 5
-          timeoutSeconds: 1
+        env:
+          - name: INFLUX_USERNAME
+            value: {{ .Values.createUsers.adminUser.username }}
+          - name: INFLUX_PASSWORD
+            value: {{ .Values.createUsers.adminUser.password }}
         volumeMounts:
         - name: {{ template "fullname" . }}
           mountPath: {{ .Values.config.storage_directory }}

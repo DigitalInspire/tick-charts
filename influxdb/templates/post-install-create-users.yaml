@@ -1,4 +1,4 @@
-{{- if .Values.createAdminUser.enabled -}}
+{{- if .Values.createUsers.enabled -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -8,12 +8,12 @@ metadata:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
-  name: {{ template "fullname" . }}-create-admin
+  name: {{ template "fullname" . }}-create-users
   annotations:
     "helm.sh/hook": post-install
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
-  activeDeadlineSeconds: {{ .Values.createAdminUser.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ .Values.createUsers.activeDeadlineSeconds }}
   template:
     metadata:
       labels:
@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: {{ template "fullname" . }}-set-auth
-        image: {{ .Values.createAdminUser.image | quote }}
+        image: {{ .Values.createUsers.image | quote }}
         env:
           - name: INFLUXDB_USER
             valueFrom:
@@ -38,8 +38,13 @@ spec:
           - "/bin/sh"
           - "-c"
           - |
-             curl -X POST http://{{ template "fullname" . }}:{{ .Values.config.http.bind_address }}/query \
+             curl -XPOST 'http://{{ template "fullname" . }}:{{ .Values.config.http.bind_address }}/query' \
              --data-urlencode \
-             "q=CREATE USER \"${INFLUXDB_USER}\" WITH PASSWORD '${INFLUXDB_PASSWORD}' {{ .Values.createAdminUser.user.privileges }}"
-      restartPolicy: {{ .Values.createAdminUser.restartPolicy }}
+             "q=CREATE USER \"${INFLUXDB_USER}\" WITH PASSWORD '${INFLUXDB_PASSWORD}' {{ .Values.createUsers.adminUser.privileges }}"
+             {{- if gt (len .Values.createUsers.users) 0 }}
+             curl -XPOST "http://{{ template "fullname" . }}:{{ .Values.config.http.bind_address }}/query?u=${INFLUXDB_USER}&p=${INFLUXDB_PASSWORD}" \
+             --data-urlencode \
+             "q={{ template "users" .Values.createUsers.users }}"
+             {{- end }}
+      restartPolicy: {{ .Values.createUsers.restartPolicy }}
 {{- end -}}

@@ -31,9 +31,11 @@ resources:
 service:
   type: ClusterIP
 
-## Create default user through Kubernetes job
+## Create Users through Kubernetes Job
 ## Defaults indicated below
-createAdminUser:
+createUsers:
+  # NOTE: It is recommended to run this job in order to
+  # (at least) create an admin user if auth-enabled=true
   enabled: true
   ## Image of the container used for job
   image: appropriate/curl:latest
@@ -41,31 +43,22 @@ createAdminUser:
   activeDeadline: 300
   ## Restart policy for job
   restartPolicy: OnFailure
-  user:
-    ## The user name
+  # The admin user that should be initially created
+  adminUser:
     username: "admin"
-    ## User password
-    ## single quotes must be escaped (\')
+    # admin password
+    # single quotes must be escaped (\')
     password: "admin"
-    ## User privileges ("WITH ALL PRIVILEGES" = InfluxDB Super admin)
+    # User privileges ("WITH ALL PRIVILEGES" = InfluxDB Super admin)
+    # Set this to an empty string if no privileges should be set
     privileges: "WITH ALL PRIVILEGES"
-
-# Create additional telegraf user for writing data from telegraf to influxdb
-# If disabled, no telegraf user will be created
-createTelegrafUser:
-  enabled: true
-  ## Image of the container used for job
-  image: appropriate/curl:latest
-  ## Deadline for job so it does not retry forever.
-  activeDeadline: 300
-  ## Restart policy for job
-  restartPolicy: OnFailure
-  user:
-    username: "telegrafwriter"
-    password: "Telegr@fWr!ter"
-    privileges: ""
-
-
+  # List of users to be initially created
+  # List a new user by adding username, password and privileges
+  # with the schma used below
+  users:
+    - username: "telegrafwriter"
+      password: "Telegr@fWr!ter"
+      privileges: ""
 
 ## Persist data to a persistent volume
 ## This does not delete data after a shutdown or restart of the Pod
