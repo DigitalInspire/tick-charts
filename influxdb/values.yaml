@@ -83,9 +83,9 @@ ingress:
   enabled: true
   # hostname is an already registered domain name that points to one of your worker nodes!
   # as ingress controller is a Deamon Set, each worker node (except master) can be used to access
-  # influxdb via ingress or the specified hostname!
+  # influxdb via ingress or the specified hostname! Master does not deploy pods by default thats why.
+  # You can also set the ingress controller to be deployed on the master by tainting it!
   # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access influxdb
-  #       Use wildcards for subdomains. Example: *.mydomain.com
   hostname: ""
   # tls should only be used if a hostname is given!
   # if tls is enabled, ensure that a certificate for the hostname is provided under "secretName"
@@ -93,8 +93,20 @@ ingress:
   # this attribute points to an existing K8s secret tls
   # Consult the README.md in order to see how to create a K8s Secret TLS
   secretName: my-tls-cert
+  # This property indicates the path that influxdb REST API is accessible from.
+  # If your hostname is "foo.com" then influxdb is accessible under http(s)://foo.com/<PATH>
+  # If your path is "influxdb" then you can ping influxdb under http(s)://foo.com/influxdb/ping
+  path: /influxdb
   annotations:
     kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # This snippet assures that the ingress controller rewrites the path.
+    # If you request influxdb under http(s)://foo.com/influxdb/ping then the
+    # path is rewritten to /ping and sent to the influxdb service in order for the service
+    # to understand your request (i.e. influxdb does not have a path /influxdb)
+    # NOTE: The path after "rewrite" MUST equal the path property set above (i.e. ingress.path)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite /influxdb/(.*) /$1 break;
 
 
 ## Change InfluxDB configuration paramaters below
