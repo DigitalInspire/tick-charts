@@ -19,7 +19,7 @@ spec:
   - http:
   {{- end }}
       paths:
-      - path: /telegraf
+      - path: {{ .Values.ingress.path }}
         backend:
           serviceName: {{ template "fullname" . }}
           servicePort: 8186

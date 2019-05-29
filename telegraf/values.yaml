@@ -11,7 +11,7 @@ namePrefix: influxdata
 ## ref: https://hub.docker.com/r/library/telegraf/tags/
 image:
   repo: "telegraf"
-  tag: "1.10.3"
+  tag: "1.10.4"
   pullPolicy: IfNotPresent
 
 ## Configure resource requests and limits
@@ -21,7 +21,7 @@ resources:
     memory: 256Mi
     cpu: 0.1
   limits:
-    memory: 2Gi
+    memory: 3Gi
     cpu: 2
 
 ## Configure the service for this telegraf instance. If you are running
@@ -32,24 +32,27 @@ service:
   enabled: true
   type: ClusterIP
 ## NOTE2: socket_listener is exposed over LoadBalancer as ingress does not support TCP/UDP
-##        Specify the desired port under service.socket_listener.nodePort
+## Specify the desired port under service.socket_listener.nodePort
   external:
+    # Note: If the custom Telegraf TCP Proxy (with authentication) is used in K8s, then
+    # this property needs to be set to false (i.e. enabled=false).
     enabled: true
     socket_listener:
       type: LoadBalancer
-      nodePort: 30094 #this port is exposed to the outside world
-      servicePort: 8094 #has to equal port that is specified in configuration
+      nodePort: 30094 # this port is exposed to the outside world
+      servicePort: 8094 # has to equal port that is specified in configuration
 
 # Ingress Object for Telegraf
-# In short, this allows Telegraf being accessed from the outside world
+# In short, this allows the Telegraf being accessed from the outside world
 # Also allows for SSL termination and usage of hostnames and tls/ssl certs
-# If disabled, InfluxDB won't be accesible from the outside
+# If disabled, Telegraf (HTTP/S) won't be accesible from the outside
 # ref: https://kubernetes.io/docs/concepts/services-networking/ingress/ 
 ingress:
   enabled: true
   # hostname is an already registered domain name that points to one of your worker nodes!
   # as ingress controller is a Deamon Set, each worker node (except master) can be used to access
-  # telegraf via ingress or the specified hostname!
+  # telegraf via ingress or the specified hostname! Master does not deploy pods by default thats why.
+  # You can also set the ingress controller to be deployed on the master by tainting it!
   # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access telegraf
   hostname: ""
   # tls should only be used if a hostname is given!
@@ -58,12 +61,24 @@ ingress:
   # this attribute points to an existing K8s secret tls
   # Consult the README.md in order to see how to create a K8s Secret TLS
   secretName: my-tls-cert
+  # This property indicates the path that telegraf REST API is accessible from.
+  # If your hostname is "foo.com" then telegraf is accessible under http(s)://foo.com/<PATH>
+  # If your path is "telegraf" then you can ping telegraf under http(s)://foo.com/telegraf/ping
+  path: /telegraf
   annotations:
     kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # This snippet assures that the ingress controller rewrites the path.
+    # If you request telegraf under http(s)://foo.com/telegraf/ping then the
+    # path is rewritten to /ping and sent to the telegraf service in order for the service
+    # to understand your request (i.e. telegraf does not have a path /telegraf)
+    # NOTE: The path after "rewrite" MUST equal the path property set above (i.e. ingress.path)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite /telegraf/(.*) /$1 break;
 
 ## Exposed telegraf configuration
-## For full list of possible values see `/docs/all-config-values.yaml` and `/docs/all-config-values.toml`
-## ref: https://docs.influxdata.com/telegraf/v1.8/administration/configuration/
+## For full list of possible values see:
+## ref: https://github.com/influxdata/telegraf/blob/master/etc/telegraf.conf
 config:
   agent:
     interval: "7s"
@@ -74,25 +89,62 @@ config:
     flush_interval: "10s"
     flush_jitter: "0s"
     precision: ""
+    # Run telegraf with debug log messages.
     debug: false
+    # Run telegraf in quiet mode (error log messages only).
     quiet: false
-    logfile: "/var/log/telegraf/telegraf.log"
+    # Specify the log file name. The empty string means to log to stderr.
+    # DO NOT CHANGE THIS AS containers should log to stderr by design/default!
+    logfile: ""
     hostname: "telegraf"
-    omit_hostname: false
+    # If set to true, the tag "host" will not be added to the data when ingested
+    # If set to false, the tag "host" will be added to the ingested data with value
+    # from hostname or, by default, from os.Hostname()
+    omit_hostname: true
+###############################################################################
+#                            INPUT PLUGINS                                    #
+###############################################################################
+# CPU and System is required for chronograf
+# This may show errors in the logs, but this does not affect performance or functionality
+  inputs:
+    # Telegraf InfluxDB Listener is the input plugin that acts as a proxy
+    # for the InfluxDB /write REST API. 
+    # This port is exposed through the ingress controller!
+    - influxdb_listener:
+        service_address: ":8186"
+        read_timeout: "10s"
+        write_timeout: "10s"
+        max_body_size: 0
+        max_line_size: 0
+        # basic username and password needs to be used by a client
+        # that wants to ingest data over HTTP.
+        basic_username: "http_ingest"
+        basic_password: "!nge$tOverHTTP"
+    - socket_listener:
+        service_address: "tcp://:8094"
+        max_connections: 0
+        read_timeout: "30s"
+        data_format: "influx"
+
+###############################################################################
+#                            OUTPUT PLUGINS                                   #
+###############################################################################
   outputs:
-    # NOTE: These are influxdb outputs for each database
-    # If you have a new database and wish to apply telegraf routing to this database
-    # add it to this configuration section! Also apply privileges for the Telegraf
-    # user, created on the influxdb, to write to the newly created database!
-    # Example given:
+    # This is one static routing configuration that routes data according to the
+    # tagpass property and excludes it afterwards.
+    # NOTE: If you want to add static routing to telegraf for a new database,
+    # copy this example configuration array and append it to the outputs property.
+    # Then, adapt the database and tagpass[0].value property to the desired database
     - influxdb:
         url: "http://influxdata-influxdb:8086"
+        # The database this static routing configuration is writing to
         database: "test"
-        tagexclude: 
-          - "db"
         # HTTP basic auth with the username and password that should exist in influxdb
         # for telegraf to write to ALL db's (new creation of db means telegraf user needs
         # to be added to the privileges)
+        # NOTE: Check the influxdb Helm Chart values.yaml file and if a user for telegraf
+        # is created. If not, create one and use the same credentials here!
+        # NOTE2: The user needs write permissions for the specified database!
         username: "telegrafwriter"
         password: "Telegr@fWr!ter"
         skip_database_creation: true
@@ -102,336 +154,32 @@ config:
           # data has a tag "db" with the value "test"
           - tag: "db"
             value: "test"
+        # The tag(s) this static routing configuration should exclude after routing is done
+        tagexclude: 
+          - "db"
 
 
-
-##        retention_policy: ""
-##        write_consistency: "any"
-##        timeout: "5s"
-##        username: "telegraf"
-##        password: "metricsmetricsmetricsmetrics"
-##        user_agent: "telegraf"
-##        udp_payload: 512
-##        ssl_ca: "/etc/telegraf/ca.pem"
-##        ssl_cert: "/etc/telegraf/cert.pem"
-##        ssl_key: "/etc/telegraf/key.pem"
-##        insecure_skip_verify: false
-##      amqp:
-##        url: "amqp://localhost:5672/influxdb"
-##        exchange: "telegraf"
-##        auth_method: "PLAIN"
-##        routing_tag: "host"
-##        retention_policy: "default"
-##        database: "telegraf"
-##        precision: "s"
-##        ssl_ca: "/etc/telegraf/ca.pem"
-##        ssl_cert: "/etc/telegraf/cert.pem"
-##        ssl_key: "/etc/telegraf/key.pem"
-##        insecure_skip_verify: false
-##        data_format: "influx"
-##      kafka:
-##        brokers:
-##          - "localhost:9092"
-##        topic: "telegraf"
-##        routing_tag: "host"
-##        compression_codec: 0
-##        required_acks: -1
-##        max_retry: 3
-##        ssl_ca: "/etc/telegraf/ca.pem"
-##        ssl_cert: "/etc/telegraf/cert.pem"
-##        ssl_key: "/etc/telegraf/key.pem"
-##        insecure_skip_verify: false
-##        data_format: "influx"
-##      mqtt:
-##        servers:
-##          - "localhost:1883"
-##        topic_prefix: "telegraf"
-##        username: "telegraf"
-##        password: "metricsmetricsmetricsmetrics"
-##        ssl_ca: "/etc/telegraf/ca.pem"
-##        ssl_cert: "/etc/telegraf/cert.pem"
-##        ssl_key: "/etc/telegraf/key.pem"
-##        insecure_skip_verify: false
-##        data_format: "influx"
-##      nats:
-##        servers:
-##          - "nats://localhost:4222"
-##        username: ""
-##        password: ""
-##        subject: "telegraf"
-##        ssl_ca: "/etc/telegraf/ca.pem"
-##        ssl_cert: "/etc/telegraf/cert.pem"
-##        ssl_key: "/etc/telegraf/key.pem"
-##        insecure_skip_verify: false
-##        data_format: "influx"
-##      nsq:
-##        server: "localhost:4150"
-##        topic: "telegraf"
-##        data_format: "influx"
-  
-# CPU and System is required for chronograf
-# This may show errors in the logs, but this does not affect performance or functionality
-  inputs:
-    # Telegraf HTTP Listener
-    # This port is exposed through the ingress controller!
-    http_listener:
-      service_address: ":8186"
-      read_timeout: "10s"
-      write_timeout: "10s"
-      max_body_size: 0
-      max_line_size: 0
-      # basic username and password needs to be used by a client
-      # that wants to ingest data over HTTP.
-      basic_username: "http_ingest"
-      basic_password: "!nge$tOverHTTP"
-    # TCP Socker Listener (WITHOUT AUTH! U may use the Digital Inspire TCP Proxy)
-    socket_listener:
-      service_address: "tcp://:8094"
-      max_connections: 0
-      read_timeout: "30s"
-      data_format: "influx"
-
-##      cpu:
-##        percpu: false
-##        totalcpu: true
-##      system:
-##      aerospike:
-##        servers:
-##          - "localhost:3000"
-##      apache:
-##        urls:
-##          - "http://localhost/server-status?auto"
-##      cassandra:
-##        context: "/jolokia/read"
-##        servers:
-##          - "myuser:mypassword@10.10.10.1:8778"
-##          - "10.10.10.2:8778"
-##          - ":8778"
-##        metrics :
-##          - "/java.lang:type=Memory/HeapMemoryUsage"
-##          - "/org.apache.cassandra.metrics:type=Table,keyspace=*,scope=*,name=ReadLatency"
-##      cloudwatch:
-##        region: "us-east-1"
-##        access_key: ""
-##        secret_key: ""
-##        token: ""
-##        role_arn: ""
-##        profile: ""
-##        shared_credential_file: ""
-##        period: "5m"
-##        delay: "5m"
-##        interval: "5m"
-##        cache_ttl: "10m"
-##        namespace: "AWS/ELB"
-##        ratelimit: 10
-##        metrics:
-##         names:
-##          - "Latency"
-##          - "RequestCount"
-##         dimensions:
-##           name: "LoadBalancerName"
-##           value: "p-example"
-##      consul:
-##        address: "localhost"
-##        scheme: "http"
-##        token: ""
-##        username: ""
-##        password: ""
-##        datacentre: ""
-##      couchbase:
-##        servers:
-##          - "http://localhost:8091"
-##      couchdb:
-##        hosts:
-##          - "http://localhost:8086/_stats"
-##      disque:
-##        servers:
-##          - "localhost"
-##      dns_query:
-##        servers:
-##          - "8.8.8.8"
-##        domains:
-##          - "."
-##        record_type: "A"
-##        port: 53
-##        timeout: 2
-##      dovecot:
-##        servers:
-##          - "localhost:24242"
-##        type: "global"
-##        filters:
-##          - ""
-##      elasticsearch:
-##        servers:
-##          - "http://localhost:9200"
-##        http_timeout: "5s"
-##        local: true
-##        cluster_health: false
-##        ssl_ca: "/etc/telegraf/ca.pem"
-##        ssl_cert: "/etc/telegraf/cert.pem"
-##        ssl_key: "/etc/telegraf/key.pem"
-##        insecure_skip_verify: false
-##      graylog:
-##        servers:
-##          - "http://[graylog-server-ip]:12900/system/metrics/multiple"
-##        metrics:
-##          - "jvm.cl.loaded"
-##          - "jvm.memory.pools.Metaspace.committed"
-##        username: ""
-##        password: ""
-##        ssl_ca: "/etc/telegraf/ca.pem"
-##        ssl_cert: "/etc/telegraf/cert.pem"
-##        ssl_key: "/etc/telegraf/key.pem"
-##        insecure_skip_verify: false
-##      haproxy:
-##        servers:
-##          - "http://myhaproxy.com:1936/haproxy?stats"
-##     - influxdb:
-##         urls:
-##           - "http://influxdb-influxdb.tick:8086/debug/vars"
-##         timeout: "5s"
-##     - kapacitor:
-##         urls:
-##           - "http://kap-kapacitor.tick:9092/debug/vars"
-##         timeout: "5s"
-##     - kapacitor:
-##         urls:
-##           - "http://kap2-kapacitor.tick:9092/debug/vars"
-##         timeout: "5s"
-##      lustre2:
-##        ost_procfiles:
-##          - "/proc/fs/lustre/obdfilter/*/stats"
-##          - "/proc/fs/lustre/osd-ldiskfs/*/stats"
-##          - "/proc/fs/lustre/obdfilter/*/job_stats"
-##        mds_procfiles:
-##          - "/proc/fs/lustre/mdt/*/md_stats"
-##          - "/proc/fs/lustre/mdt/*/job_stats"
-##      mailchimp:
-##        api_key: ""
-##        days_old: 0
-##        campaign_id: ""
-##      memcached:
-##        servers:
-##          - "localhost:11211"
-##        unix_sockets:
-##          - "/var/run/memcached.sock"
-##      mesos:
-##        timeout: 100
-##        masters:
-##          - "localhost:5050"
-##        master_collections:
-##          - "resources"
-##          - "master"
-##          - "system"
-##          - "agents"
-##          - "frameworks"
-##          - "tasks"
-##          - "messages"
-##          - "evqueue"
-##          - "registrar"
-##        slaves:
-##          -
-##        slave_collections:
-##          - "resources"
-##          - "agent"
-##          - "system"
-##          - "executors"
-##          - "tasks"
-##          - "messages"
-##      mongodb:
-##        servers:
-##          - "mongodb://user:password@127.0.0.1:27017"
-##        gather_perdb_stats: false
-##      mysql:
-##        servers:
-##          - "tcp(127.0.0.1:3306)?tls=false"
-##        perf_events_statements_digest_text_limit : 120
-##        perf_events_statements_limit: 250
-##        perf_events_statements_time_limit        : 86400
-##        table_schema_databases: []
-##        gather_table_schema: false
-##        gather_process_list: true
-##        gather_info_schema_auto_inc: true
-##        gather_slave_status: true
-##        gather_binary_logs: false
-##        gather_table_io_waits: false
-##        gather_table_lock_waits: false
-##        gather_index_io_waits: false
-##        gather_event_waits: false
-##        gather_file_events_stats: false
-##        gather_perf_events_statements: false
-##        interval_slow: "30m"
-##      net_response:
-##        protocol: "tcp"
-##        address: "github.com:80"
-##        timeout: "1s"
-##        send: "ssh"
-##        expect: "ssh"
-##        read_timeout: "1s"
-##      nginx:
-##        urls:
-##          - "http://nginx.kube-system:18080/status"
-##      nsq:
-##        endpoints:
-##          - "http://localhost:4151"
-##      phpfpm:
-##        urls:
-##          - "http://localhost/status"
-##      ping:
-##        urls:
-##          - "www.google.com"
-##        count: 1
-##        ping_interval: 1.0
-##        timeout: 1.0
-##        interface: ""
-##      postgresql:
-##        address: "postgres://user:password@localhost?sslmode=disable"
-##        ignored_databases:
-##          - "postgres"
-##        databases:
-##          - "app_production"
-##          - "testing"
-##      prometheus:
-##        urls:
-##          - "https://kubernetes.default:443/metrics"
-##        name_prefix: "prom_"
-##        bearer_token: "/var/run/secrets/kubernetes.io/serviceaccount/token"
-##        insecure_skip_verify: true
-##        ssl_ca: /path/to/cafile
-##        ssl_cert: /path/to/certfile
-##        ssl_key: /path/to/keyfile
-##     rabbitmq:
-##       url: "http://localhost:15672"
-##       name: "rmq-server-1"
-##       username: "guest"
-##       password: "guest"
-##       ssl_ca: "/etc/telegraf/ca.pem"
-##       ssl_cert: "/etc/telegraf/cert.pem"
-##       ssl_key: "/etc/telegraf/key.pem"
-##       insecure_skip_verify: false
-##       nodes:
-##         - "rabbit@node1"
-##         - "rabbit@node2"
-##     raindrops:
-##       urls:
-##         - "http://localhost:8080/_raindrops"
-##     redis:
-##       servers:
-##         - "tcp://localhost:6379"
-##     rethinkdb:
-##       servers:
-##         - "127.0.0.1:28015"
-##     riak:
-##       servers:
-##         - "http://localhost:8098"
-##     sqlserver:
-##       servers:
-##         - "Server=192.168.1.10;Port=1433;User Id=<user>;Password=<pw>;app name=telegraf;log=1;"
-##     twemproxy:
-##       addr: "localhost:22222"
-##        pools:
-##          - "redis_pool"
-##          - "mc_pool"
-##      zookeeper:
-##        servers:
-##          - "localhost:2181"
+    # NOTE: This approach uses a dynamic routing of data into the appropriate database
+    # based on the database_tag. The disadvantage is, that the used tag for routing 
+    # cannot be deleted and is also stored in the influxdb
+    # NOTE: If you want to use dynamic routing (this one), delete all static routing
+    # configurations that are present (or comment them out)
+    # ref: https://github.com/influxdata/telegraf/pull/5490#issuecomment-468068149
+##    - influxdb:
+##        url: "http://influxdata-influxdb:8086"
+##        # This determines which tag in the LineProtocol defines the destination database
+##        # default is "db" (i.e. the value of the "db" tag determines in which database
+##        # data is written to!
+##        database_tag: "db"
+##        # HTTP basic auth with the username and password that should exist in influxdb
+##        # for telegraf to write to ALL db's (new creation of db means telegraf user needs
+##        # to be added to the privileges)
+##        # NOTE: Check the influxdb Helm Chart values.yaml file and if a user for telegraf
+##        # is created. If not, create one and use the same credentials here!
+##        # NOTE2: The user needs write permissions for the specified database!
+##        username: "telegrafwriter"
+##        password: "Telegr@fWr!ter"
+##        # If the telegrafwriter has no super admin permissions, set this to true!
+##        # NOTE: Best practices would be to set this to true, as the telegrafwriter
+##        # should not be able to create new databases (could be exploited by attackers)
+##        skip_database_creation: true

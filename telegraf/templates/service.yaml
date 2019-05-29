@@ -10,43 +10,28 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
+  {{- $external_socket := .Values.service.external.enabled }}
   {{- range $objectKey, $objectValue := .Values.config.inputs }}
   {{- range $key, $value := . -}}
     {{- $tp := typeOf $value -}}
-    {{- if eq $key "http_listener" }}
+    {{- if eq $key "influxdb_listener" }}
   - port: {{ trimPrefix ":" $value.service_address | int64 }}
     targetPort: {{ trimPrefix ":" $value.service_address | int64 }}
     name: "http-listener"
     {{- end }}
-    {{- if eq $key "statsd" }}
-  - port: {{ trimPrefix ":" $value.service_address | int64 }}
-    targetPort: {{ trimPrefix ":" $value.service_address | int64 }}
-    protocol: "UDP"
-    name: "statsd"
-    {{- end }}
-    {{- if eq $key "tcp-listener" }}
-  - port: {{ trimPrefix ":" $value.service_address | int64 }}
-    targetPort: {{ trimPrefix ":" $value.service_address | int64 }}
-    name: "tcp_listener"
-    {{- end }}
-    {{- if eq $key "udp-listener" }}
-  - port: {{ trimPrefix ":" $value.service_address | int64 }}
-    targetPort: {{ trimPrefix ":" $value.service_address | int64 }}
-    protocol: "UDP"
-    name: "udp_listener"
-    {{- end }}
-    {{- if eq $key "webhooks" }}
-  - port: {{ trimPrefix ":" $value.service_address | int64 }}
-    targetPort: {{ trimPrefix ":" $value.service_address | int64 }}
-    name: "webhooks"
+    {{- if and (eq $key "socket_listener") (not $external_socket) }}
+  - port: {{ trimPrefix "tcp://:" $value.service_address | int64 }}
+    targetPort: {{ trimPrefix "tcp://:" $value.service_address | int64 }}
+    protocol: TCP
+    name: "socket-listener"
     {{- end }}
   {{- end -}}
   {{- end }}
   selector:
-    app: {{ template "fullname"  .}}
+    app: {{ template "fullname" . }}
 {{- end -}}
+{{- if and .Values.service.enabled .Values.service.external.enabled }}
 ---
-{{- if and .Values.service.enabled .Values.service.external.enabled -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -59,8 +44,9 @@ spec:
 {{- with .Values.service.external.socket_listener }}
   type: {{ .type }}
   ports:
-  - port: {{ .nodePort | int64 }}
+  - port: {{ .servicePort | int64 }}
     targetPort: {{ .servicePort | int64 }}
+    nodePort: {{ .nodePort | int64 }}
     name: "socket-listener"
 {{- end}}
   selector:

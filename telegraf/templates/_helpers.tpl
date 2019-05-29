@@ -83,12 +83,12 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
           {{- range $b, $val := $value }}
             {{- $i := int64 $b }}
             {{- if eq $i $numOut }}
-        {{ $val | quote }}
+        {{- $val | quote -}}
             {{- else }}
-        {{ $val | quote }},
+        {{- $val | quote -}},
             {{- end }}
           {{- end }}
-      ]
+      {{- "]" }}
       {{- end }}
     {{- end }}
     {{- end }}
