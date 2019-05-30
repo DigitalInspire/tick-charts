@@ -1,4 +1,4 @@
-{{- $bl := empty .Values.influxURL }}
+{{- $bl := empty .Values.influxdb.url }}
 {{- if not $bl }}
 Kapacitor can be accessed via port 9092 on the following DNS name from within your cluster:
 
@@ -24,6 +24,6 @@ To watch for the LoadBalancer IP or Hostname to populate run the following:
 {{- end }}
 {{- end }}
 
-{{- if empty .Values.influxURL }}
-You have not set .Values.influxURL. Kapacitor needs an InfluxDB instance to create a subscription on. Please set that value to deploy kapacitor
+{{- if empty .Values.influxdb.url }}
+You have not set .Values.influxdb.url. Kapacitor needs an InfluxDB instance to create a subscription on. Please set that value to deploy kapacitor
 {{- end }}

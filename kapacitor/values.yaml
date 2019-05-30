@@ -42,6 +42,73 @@ resources:
     memory: 2Gi
     cpu: 2
 
+
 ## Set the URL of InfluxDB instance to create subscription on
+## NOTE: If this value is not set, the stateful set will not be deployed!!
 ## ref: https://docs.influxdata.com/kapacitor/v1.5/introduction/getting_started/
-influxURL: http://influxdata-inflxudb:8086
+influxdb:
+  url: http://influxdata-influxdb:8086
+  # Set user credentials in order for the Kapacitor to successfully connect to 
+  # influxdb
+  username: "admin"
+  password: "admin"
+
+
+config:
+  data_dir: /var/lib/kapacitor
+  skip_config_overrides: false
+  default_retention_policy: ""
+  http:
+    bind_address: ":9092"
+    auth_enabled: false
+    log_enabled: false
+    write_tracing: false
+    pprof_enabled: false
+    https_enabled: false
+    shutdown_timeout: "10s"
+  replay:
+    dir: /var/lib/kapacitor/replay
+  storage:
+    boltdb: /var/lib/kapacitor/kapacitor.db
+  task:
+    dir: /var/lib/kapacitor/tasks
+    snapshot_interval: "1m0s"
+  influxdb:
+    enabled: true
+    name: "default"
+    default: false
+    timeout: "0s"
+    disable_subscriptions: false
+    subscription_protocol: "http"
+    http_port: 0
+    udp_bind: ""
+    udp_buffer: 1000
+    udp_read_buffer: 0
+    startup_timeout: "5m0s"
+    subscriptions_sync_interval: "1m0s"
+    excluded_subscriptions:
+      - db: "_kapacitor"
+        retention: "autogen"
+  config_override:
+    enabled: true
+  logging:
+    file: "STDERR"
+    level: "ERROR" # INFO, ERROR, ...
+  deadman:
+    interval: "10s"
+    threshold: 0.1
+    id: ""
+    message: ""
+    global: false
+  slack:
+    enabled: false
+    url: ""
+    channel: ""
+    username: "kapacitor"
+    icon_emoji: ""
+    global: false
+    state_changes_only: false
+    ssl_ca: ""
+    ssl_cert: ""
+    ssl_key: ""
+    insecure_skip_verify: false

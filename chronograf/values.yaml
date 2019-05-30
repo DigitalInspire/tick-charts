@@ -22,7 +22,7 @@ resources:
     cpu: 0.1
   limits:
     memory: 2Gi
-    cpu: 2
+    cpu: 1
 
 ## Specify a service type
 ## ClusterIP is default as Ingress is used to allow for external access
@@ -30,18 +30,18 @@ resources:
 service:
   type: ClusterIP
 
-# Ingress Object for InfluxDB
-# In short, this allows the InfluxDB being accessed from the outside world
+# Ingress Object for Chronograf
+# In short, this allows the Chronograf being accessed from the outside world
 # Also allows for SSL termination and usage of hostnames and tls/ssl certs
-# If disabled, InfluxDB won't be accesible from the outside
+# If disabled, Chronograf (HTTP/S) won't be accesible from the outside
 # ref: https://kubernetes.io/docs/concepts/services-networking/ingress/ 
 ingress:
   enabled: true
   # hostname is an already registered domain name that points to one of your worker nodes!
   # as ingress controller is a Deamon Set, each worker node (except master) can be used to access
-  # influxdb via ingress or the specified hostname!
-  # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access influxdb
-  #       Use wildcards for subdomains. Example: *.mydomain.com
+  # chronograf via ingress or the specified hostname! Master does not deploy pods by default thats why.
+  # You can also set the ingress controller to be deployed on the master by tainting it!
+  # NOTE: if hostname is an empty string, the actual ip address of a node can be used to access chronograf
   hostname: ""
   # tls should only be used if a hostname is given!
   # if tls is enabled, ensure that a certificate for the hostname is provided under "secretName"
@@ -49,8 +49,21 @@ ingress:
   # this attribute points to an existing K8s secret tls
   # Consult the README.md in order to see how to create a K8s Secret TLS
   secretName: my-tls-cert
+  # This property indicates the path that chronograf REST API is accessible from.
+  # If your hostname is "foo.com" then chronograf is accessible under http(s)://foo.com/<PATH>
+  # If your path is "chronograf" then you can ping chronograf under http(s)://foo.com/chronograf/ping
+  path: /chronograf
   annotations:
     kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # This snippet assures that the ingress controller rewrites the path.
+    # If you request chronograf under http(s)://foo.com/chronograf/ping then the
+    # path is rewritten to /ping and sent to the chronograf service in order for the service
+    # to understand your request (i.e. chronograf does not have a path /chronograf)
+    # NOTE: The path after "rewrite" MUST equal the path property set above (i.e. ingress.path)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite /chronograf/(.*) /$1 break;
+
 
 ## OAuth Settings for OAuth Providers
 ## More information -> https://docs.influxdata.com/chronograf/v1.7/administration/managing-security/

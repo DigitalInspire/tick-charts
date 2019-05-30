@@ -12,5 +12,14 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 */}}
 {{- define "fullname" -}}
 {{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s" .Values.namePrefix $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+
+
+{{- define "influxdb-excl-subs" -}}
+    [influxdb.excluded-subscriptions]
+    {{- range $idx, $item := . }}
+        {{ $item.db }} = [{{ $item.retention | quote }}]
+    {{- end }}
 {{- end -}}

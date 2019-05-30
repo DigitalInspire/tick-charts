@@ -10,7 +10,7 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-  - port: 80
+  - port: 8888
     targetPort: 8888
   selector:
     app: {{ template "fullname" . }}

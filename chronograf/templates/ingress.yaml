@@ -19,10 +19,10 @@ spec:
   - http:
   {{- end }}
       paths:
-      - path: /chronograf
+      - path: {{ .Values.ingress.path }}
         backend:
           serviceName: {{ template "fullname" . }}
-          servicePort: 80
+          servicePort: 8888
 {{- if and .Values.ingress.tls .Values.ingress.hostname .Values.ingress.secretName }}
   tls:
     - hosts:

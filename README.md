@@ -8,9 +8,9 @@ To install all components with the correct settings, the following order should 
 
 1. [nginx-ingress](/nginx-ingress/README.md)
 2. [influxdb](/influxdb/README.md)
-3. [telegraf](/telegraf/README.md) (PARTIALLY READY / UNDER CONSTRUCTION)
-4. [kapacitor](/kapacitor/README.md) (NOT READY / UNDER CONSTRUCTION)
-5. [chronograf](/chronograf/README.md) (NOT READY / UNDER CONSTRUCTION)
+3. [telegraf](/telegraf/README.md)
+4. [kapacitor](/kapacitor/README.md)
+5. [chronograf](/chronograf/README.md) (PARTIALLY READY / INGRESS REWRITE NOT WORKING WITH STATIC FILES)
 
 
 ## Deploy the whole stack!
