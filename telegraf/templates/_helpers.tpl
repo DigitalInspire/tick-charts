@@ -75,7 +75,7 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
       [outputs.{{ $output }}.{{ $key }}]
       {{- range $i, $val := $value }}
         {{ $val.tag}} = [{{ $val.value | quote }}]
-        {{- end}}
+      {{end}}
       {{- else}}
       {{ $key }} = [
           {{- $numOut := len $value }}
@@ -97,6 +97,71 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
   {{- end }}
 {{- end }}
 {{- end -}}
+
+
+
+{{/*
+  This template handles the config.outputs of the values.yaml and is an improved template
+  compared to the original outputs template.
+  This template moves sub-tables at the end of a nested array table as telegraf cannot read
+  key-value pairs of a nested array table if they are placed after a sub-table
+  In case of the tagpass sub-table for influxdb outputs, this template solves this issue.
+*/}}
+{{- define "outputsv2" -}}
+{{- range $outputIdx, $configObject := . -}}
+{{- range $output, $config := . }}
+    [[outputs.{{ $output }}]]
+  {{- if $config }}
+  {{- $tp := typeOf $config -}}
+  {{- $idx := 0 }}
+  {{- if eq $tp "map[string]interface {}" -}}
+    {{- range $key, $value := $config -}}
+      {{- $idx = add $idx 1}}
+      {{- $tp := typeOf $value }}
+      {{- if eq $tp "string"}}
+      {{ $key }} = {{ $value | quote }}
+      {{- end }}
+      {{- if eq $tp "float64"}}
+      {{ $key }} = {{ $value | int64 }}
+      {{- end }}
+      {{- if eq $tp "int"}}
+      {{ $key }} = {{ $value | int64 }}
+      {{- end }}
+      {{- if eq $tp "bool"}}
+      {{ $key }} = {{ $value }}
+      {{- end }}
+      {{- if eq $tp "[]interface {}" }}
+      {{- if eq $key "tagexclude" }}       
+      {{ $key }} = [
+          {{- $numOut := len $value }}
+          {{- $numOut := sub $numOut 1 }}
+          {{- range $b, $val := $value }}
+            {{- $i := int64 $b }}
+            {{- if eq $i $numOut }}
+        {{- $val | quote -}}
+            {{- else }}
+        {{- $val | quote -}},
+            {{- end }}
+          {{- end }}
+      {{- "]" }}
+    {{- end }}
+    {{- end }}
+    {{- if and (index $config "tagpass") (eq $idx (len $config))}}
+      [outputs.{{ $output }}.tagpass]
+      {{- range $i, $val := index $config "tagpass" }}
+        {{ $val.tag}} = [{{ $val.value | quote }}]
+      {{end}}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- end -}}
+
+
+
+
 
 {{- define "inputs" -}}
 {{- range $inputIdx, $configObject := . -}}
