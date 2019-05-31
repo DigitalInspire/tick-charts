@@ -52,7 +52,7 @@ ingress:
   # This property indicates the path that chronograf REST API is accessible from.
   # If your hostname is "foo.com" then chronograf is accessible under http(s)://foo.com/<PATH>
   # If your path is "chronograf" then you can ping chronograf under http(s)://foo.com/chronograf/ping
-  path: /chronograf
+  path: / #chronograf
   annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/use-regex: "true"
@@ -61,8 +61,8 @@ ingress:
     # path is rewritten to /ping and sent to the chronograf service in order for the service
     # to understand your request (i.e. chronograf does not have a path /chronograf)
     # NOTE: The path after "rewrite" MUST equal the path property set above (i.e. ingress.path)
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      rewrite /chronograf/(.*) /$1 break;
+##    nginx.ingress.kubernetes.io/configuration-snippet: |
+##      rewrite /chronograf(/|$)(.*) /$2 break;
 
 
 ## OAuth Settings for OAuth Providers
