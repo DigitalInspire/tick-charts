@@ -5,7 +5,7 @@ controller:
   name: controller
   image:
     repository: quay.io/kubernetes-ingress-controller/nginx-ingress-controller
-    tag: "0.23.0"
+    tag: "0.24.1"
     pullPolicy: IfNotPresent
     # www-data -> uid 33
     runAsUser: 33
@@ -83,7 +83,7 @@ controller:
 
   ## DaemonSet or Deployment
   ##
-  kind: Deployment
+  kind: DaemonSet
 
   # The update strategy to apply to the Deployment or DaemonSet
   ##
@@ -100,11 +100,10 @@ controller:
   ## Node tolerations for server scheduling to nodes with taints
   ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
   ##
-  tolerations: []
-  #  - key: "key"
-  #    operator: "Equal|Exists"
-  #    value: "value"
-  #    effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+  tolerations:
+    # This allows the controller to be sheduled on the master node aswell!
+    - key: node-role.kubernetes.io/master
+      effect: NoSchedule
 
   affinity: {}
 
@@ -310,11 +309,10 @@ defaultBackend:
   ## Node tolerations for server scheduling to nodes with taints
   ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
   ##
-  tolerations: []
-  #  - key: "key"
-  #    operator: "Equal|Exists"
-  #    value: "value"
-  #    effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+  tolerations:
+    - key: node-role.kubernetes.io/master
+      effect: NoSchedule
+
 
   affinity: {}
 
